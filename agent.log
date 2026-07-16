@@ -1,0 +1,46 @@
+Traceback (most recent call last):
+  File "/Users/haramanjeet-singh/Desktop/SRV/.venv/bin/uvicorn", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/haramanjeet-singh/Desktop/SRV/.venv/lib/python3.14/site-packages/click/core.py", line 1569, in __call__
+    return self.main(*args, **kwargs)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/haramanjeet-singh/Desktop/SRV/.venv/lib/python3.14/site-packages/click/core.py", line 1490, in main
+    rv = self.invoke(ctx)
+  File "/Users/haramanjeet-singh/Desktop/SRV/.venv/lib/python3.14/site-packages/click/core.py", line 1353, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/haramanjeet-singh/Desktop/SRV/.venv/lib/python3.14/site-packages/click/core.py", line 907, in invoke
+    return callback(*args, **kwargs)
+  File "/Users/haramanjeet-singh/Desktop/SRV/.venv/lib/python3.14/site-packages/uvicorn/main.py", line 440, in main
+    run(
+    ~~~^
+        app,
+        ^^^^
+    ...<48 lines>...
+        reset_contextvars=reset_contextvars,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/haramanjeet-singh/Desktop/SRV/.venv/lib/python3.14/site-packages/uvicorn/main.py", line 609, in run
+    config.load_app()
+    ~~~~~~~~~~~~~~~^^
+  File "/Users/haramanjeet-singh/Desktop/SRV/.venv/lib/python3.14/site-packages/uvicorn/config.py", line 427, in load_app
+    return import_from_string(self.app)
+  File "/Users/haramanjeet-singh/Desktop/SRV/.venv/lib/python3.14/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 759, in exec_module
+  File "<frozen importlib._bootstrap>", line 491, in _call_with_frames_removed
+  File "/Users/haramanjeet-singh/Desktop/SRV/agent/app.py", line 10, in <module>
+    from agent.detection.fusion import DetectionFusion
+  File "/Users/haramanjeet-singh/Desktop/SRV/agent/detection/fusion.py", line 27
+    if isinstance(m, dict) else m.service == "identity-service"), None)
+                           ^^^^
+SyntaxError: invalid syntax

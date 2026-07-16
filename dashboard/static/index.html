@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sphere Sports — Autonomous Observability</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="app-root">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- TOP BAR: Match & Agent Status                           -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="brand-pulse"></span>
+      <span class="brand-name">Sphere Sports</span>
+      <span class="brand-sep">|</span>
+      <span class="brand-sub">Autonomous Observability</span>
+    </div>
+
+    <div class="topbar-context">
+      <div class="ctx-chip" id="match-clock-chip">
+        <span class="ctx-icon">⏱</span>
+        <span class="ctx-label">MATCH</span>
+        <span class="ctx-val" id="match-clock">75:42</span>
+      </div>
+      <div class="ctx-chip" id="event-chip">
+        <span class="ctx-icon">🛍</span>
+        <span class="ctx-label">EVENT</span>
+        <span class="ctx-val" id="event-name">—</span>
+      </div>
+      <div class="ctx-chip viewers-chip">
+        <span class="ctx-icon">👥</span>
+        <span class="ctx-label">VALIDATED VIEWERS</span>
+        <span class="ctx-val" id="validated-viewers">—</span>
+      </div>
+    </div>
+
+    <div class="topbar-agent">
+      <div class="agent-state-badge" id="agent-state-badge" data-state="watching">
+        <span class="agent-state-dot"></span>
+        <span class="agent-state-label" id="agent-state-label">WATCHING</span>
+      </div>
+      <div class="ctx-chip severity-chip hidden" id="severity-chip">
+        <span class="ctx-label">INCIDENT</span>
+        <span class="ctx-val" id="severity-val">—</span>
+      </div>
+    </div>
+
+    <div class="topbar-controls">
+      <div class="sim-badge">
+        <span class="ctx-label">SIM</span>
+        <span class="ctx-val" id="sim-clock">20:00:00</span>
+        <span class="ctx-label ml-8">MIN</span>
+        <span class="ctx-val" id="logical-tick">0</span>
+        <span class="ctx-label ml-8">20x</span>
+      </div>
+      <button id="btn-start" class="tbtn tbtn-green">▶ Start</button>
+      <button id="btn-stop" class="tbtn tbtn-red">■ Stop</button>
+      <button id="btn-reset" class="tbtn tbtn-gray">↺ Reset</button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- VERDICT BANNER (full-width)                            -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="verdict-banner" id="verdict-banner" data-verdict="watching">
+    <div class="vb-icon" id="vb-icon">👁</div>
+    <div class="vb-body">
+      <div class="vb-title" id="vb-title">Systems behaving as expected — monitoring active</div>
+      <div class="vb-sub" id="vb-sub">All services within normal operating bounds. Watching for anomalies.</div>
+    </div>
+    <div class="vb-confidence hidden" id="vb-confidence">
+      <span class="conf-label">CONFIDENCE</span>
+      <span class="conf-val" id="conf-val">—</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- MAIN 3-COLUMN GRID                                     -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="main-grid">
+
+    <!-- ─── LEFT COLUMN ──────────────────────────────────── -->
+    <div class="col col-left">
+
+      <!-- Situation Card -->
+      <div class="card" id="situation-card">
+        <div class="card-hdr">
+          <span class="card-title">Live Situation</span>
+          <span class="card-badge" id="situation-status">Nominal</span>
+        </div>
+        <div class="card-body">
+          <!-- Surge Decomposition Visual -->
+          <div class="surge-decomp" id="surge-decomp">
+            <div class="surge-label">Login attempts / min</div>
+            <div class="surge-bar-wrap">
+              <div class="surge-bar-explained" id="surge-explained-bar" style="width:100%"></div>
+              <div class="surge-bar-residual" id="surge-residual-bar" style="width:0%"></div>
+            </div>
+            <div class="surge-legend">
+              <span class="sl-dot explained"></span><span>Explained <b id="surge-explained-val">—</b></span>
+              <span class="sl-dot residual"></span><span>Residual <b id="surge-residual-val">0</b></span>
+            </div>
+          </div>
+
+          <!-- Key Observations (max 3 plain-language bullets) -->
+          <div class="key-obs" id="key-obs">
+            <div class="ko-title">Key observations</div>
+            <ul class="ko-list" id="ko-list">
+              <li>Awaiting first telemetry window…</li>
+            </ul>
+          </div>
+
+          <!-- Mini chart -->
+          <div class="mini-chart-wrap">
+            <canvas id="surge-chart" height="90"></canvas>
+          </div>
+        </div>
+        <button class="card-expand-btn" onclick="openDrawer('telemetry-drawer')">View all telemetry ›</button>
+      </div>
+
+      <!-- Anomaly Explanation Card -->
+      <div class="card" id="anomaly-card">
+        <div class="card-hdr">
+          <span class="card-title">Which relationship broke?</span>
+        </div>
+        <div class="card-body">
+          <div class="indicator-list" id="indicator-list">
+            <div class="ind-row ind-ok">
+              <div class="ind-dot"></div>
+              <div class="ind-body">
+                <div class="ind-name">Requests per real viewer</div>
+                <div class="ind-state">Healthy</div>
+                <div class="ind-text">Traffic matches validated viewer count</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── CENTRE COLUMN (RCA Story) ────────────────────── -->
+    <div class="col col-center">
+      <div class="card rca-card">
+        <div class="card-hdr">
+          <span class="card-title">Root-Cause Analysis</span>
+          <div class="rca-stages" id="rca-stages">
+            <span class="rca-stage" data-stage="1">Symptoms</span>
+            <span class="rca-stage-sep">›</span>
+            <span class="rca-stage" data-stage="2">Hypotheses</span>
+            <span class="rca-stage-sep">›</span>
+            <span class="rca-stage" data-stage="3">Origin</span>
+            <span class="rca-stage-sep">›</span>
+            <span class="rca-stage" data-stage="4">Localize</span>
+            <span class="rca-stage-sep">›</span>
+            <span class="rca-stage" data-stage="5">Verdict</span>
+          </div>
+        </div>
+        <div class="card-body rca-body">
+
+          <!-- Stage 1: Symptom Storm -->
+          <div class="rca-section" id="rca-s1">
+            <div class="rca-sec-title">Stage 1 — Symptom storm captured</div>
+            <div class="symptom-list" id="symptom-list">
+              <div class="empty-hint">No active symptoms detected.</div>
+            </div>
+          </div>
+
+          <!-- Stage 2: Hypotheses -->
+          <div class="rca-section" id="rca-s2">
+            <div class="rca-sec-title">Stage 2 — Cause alternatives considered</div>
+            <table class="hyp-table" id="hyp-table">
+              <thead><tr><th>Candidate</th><th>Status</th><th>Reason</th></tr></thead>
+              <tbody id="hyp-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Stage 3: Causal Path -->
+          <div class="rca-section" id="rca-s3">
+            <div class="rca-sec-title">Stage 3 — Collapse to origin</div>
+            <div class="causal-path" id="causal-path">
+              <div class="empty-hint">Tracing causal path…</div>
+            </div>
+          </div>
+
+          <!-- Stage 4: Localization -->
+          <div class="rca-section hidden" id="rca-s4">
+            <div class="rca-sec-title">Stage 4 — Exact localization</div>
+            <div class="loc-grid">
+              <div class="loc-row"><span class="loc-lbl">Service</span><span class="loc-val" id="loc-service">—</span></div>
+              <div class="loc-row"><span class="loc-lbl">File</span><span class="loc-val mono" id="loc-file">—</span></div>
+              <div class="loc-row"><span class="loc-lbl">Keys</span><span class="loc-val mono" id="loc-keys">—</span></div>
+              <div class="loc-row"><span class="loc-lbl">Commit</span><span class="loc-val mono" id="loc-commit">—</span></div>
+              <div class="loc-row"><span class="loc-lbl">Mechanism</span><span class="loc-val" id="loc-mechanism">—</span></div>
+            </div>
+            <button class="card-expand-btn" onclick="openDrawer('diff-drawer')">View config diff ›</button>
+          </div>
+
+          <!-- Stage 5: Verdict -->
+          <div class="rca-section" id="rca-s5">
+            <div class="rca-sec-title">Stage 5 — Verdict &amp; confidence</div>
+            <div class="verdict-block" id="verdict-block">
+              <div class="verd-class" id="verd-class">WATCHING</div>
+              <div class="verd-conf" id="verd-conf"></div>
+              <div class="verd-why" id="verd-why">Awaiting first inference cycle.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── RIGHT COLUMN (Response & Approval) ───────────── -->
+    <div class="col col-right">
+      <div class="card response-card">
+        <div class="card-hdr">
+          <span class="card-title">Response &amp; Approval</span>
+          <div class="action-state-flow" id="action-state-flow">
+            <span class="asf-step" id="asf-proposed">Proposed</span>
+            <span class="asf-sep">›</span>
+            <span class="asf-step" id="asf-approved">Approved</span>
+            <span class="asf-sep">›</span>
+            <span class="asf-step" id="asf-applying">Applying</span>
+            <span class="asf-sep">›</span>
+            <span class="asf-step" id="asf-verifying">Verifying</span>
+            <span class="asf-sep">›</span>
+            <span class="asf-step" id="asf-recovered">Recovered</span>
+          </div>
+        </div>
+        <div class="card-body" id="response-panel">
+          <div class="empty-hint">No recommended response. All systems healthy.</div>
+        </div>
+      </div>
+
+      <!-- Verification Results (shown after action) -->
+      <div class="card verif-card hidden" id="verif-card">
+        <div class="card-hdr">
+          <span class="card-title">Recovery Verification</span>
+          <span class="card-badge" id="verif-badge">Pending</span>
+        </div>
+        <div class="card-body">
+          <table class="verif-table" id="verif-table">
+            <thead>
+              <tr><th>Health Measure</th><th>Before</th><th>After</th><th>Result</th></tr>
+            </thead>
+            <tbody id="verif-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-grid -->
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- INCIDENT TIMELINE & ACTION LOG (bottom full-width)     -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="timeline-section">
+    <div class="tl-header">
+      <span class="card-title">Incident Timeline &amp; Action Log</span>
+      <div class="tl-filters">
+        <button class="tl-filter active" data-filter="all">All</button>
+        <button class="tl-filter" data-filter="detection">Detection</button>
+        <button class="tl-filter" data-filter="rca">RCA</button>
+        <button class="tl-filter" data-filter="action">Action</button>
+        <button class="tl-filter" data-filter="verification">Verification</button>
+      </div>
+      <button id="btn-reveal" class="tbtn tbtn-cyan">🔍 Reveal Evaluator Truth</button>
+    </div>
+    <div class="tl-scroll">
+      <div class="tl-track" id="tl-track">
+        <div class="tl-empty">Simulation not started. Press ▶ Start to begin.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- EVALUATOR REVEAL PANEL                                 -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="eval-reveal hidden" id="eval-reveal">
+    <div class="eval-hdr">
+      <h3>Evaluator Ground-Truth Audit</h3>
+      <span id="btn-close-reveal" class="close-x" onclick="document.getElementById('eval-reveal').classList.add('hidden')">✕</span>
+    </div>
+    <div class="eval-stats">
+      <div class="es-box"><span class="es-val" id="eval-class-acc">—</span><span class="es-lbl">Classification Accuracy</span></div>
+      <div class="es-box"><span class="es-val" id="eval-rca-acc">—</span><span class="es-lbl">RCA Accuracy</span></div>
+      <div class="es-box"><span class="es-val" id="eval-leakage">—</span><span class="es-lbl">Leakage Audit</span></div>
+    </div>
+    <div class="eval-table-wrap">
+      <table class="eval-table">
+        <thead><tr><th>Tick</th><th>Hidden Truth</th><th>Agent Verdict</th><th>Verdict</th><th>Ground-Truth Culprit</th><th>Agent Localized</th><th>RCA</th></tr></thead>
+        <tbody id="eval-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- DRAWERS (slide-in panels)                              -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Telemetry Drawer -->
+  <div class="drawer hidden" id="telemetry-drawer">
+    <div class="drawer-hdr">
+      <span>Technical Evidence — Telemetry</span>
+      <span class="close-x" onclick="closeDrawer('telemetry-drawer')">✕</span>
+    </div>
+    <div class="drawer-body">
+      <canvas id="full-surge-chart" height="120"></canvas>
+      <canvas id="indicators-chart" height="120" style="margin-top:16px"></canvas>
+      <div class="drawer-section-title">Service Graph (click node for detail)</div>
+      <svg id="service-graph" viewBox="0 0 500 300" style="width:100%;max-height:220px"></svg>
+      <div class="drawer-section-title">Recent Logs</div>
+      <pre class="log-pre" id="log-pre">No logs yet.</pre>
+    </div>
+  </div>
+  <!-- Config Diff Drawer -->
+  <div class="drawer hidden" id="diff-drawer">
+    <div class="drawer-hdr">
+      <span>Config Diff — payment-service</span>
+      <span class="close-x" onclick="closeDrawer('diff-drawer')">✕</span>
+    </div>
+    <div class="drawer-body">
+      <pre class="diff-pre" id="diff-pre">No config diff available yet.</pre>
+    </div>
+  </div>
+  <!-- Drawer Overlay -->
+  <div class="drawer-overlay hidden" id="drawer-overlay" onclick="closeAllDrawers()"></div>
+
+</div><!-- /app-root -->
+<script src="app.js"></script>
+</body>
+</html>

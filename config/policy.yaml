@@ -1,0 +1,30 @@
+policies:
+  scale:
+    risk_level: low
+    requires_approval: false
+    blast_radius: 0.1
+
+  rate_limit:
+    risk_level: medium
+    requires_approval: true
+    blast_radius: 0.3
+
+  circuit_breaker:
+    risk_level: medium
+    requires_approval: true
+    blast_radius: 0.4
+
+  restart:
+    risk_level: medium
+    requires_approval: true
+    blast_radius: 0.2
+
+  config_patch:
+    risk_level: high
+    requires_approval: true
+    blast_radius: 0.5
+
+  rollback:
+    risk_level: high
+    requires_approval: true
+    blast_radius: 0.5

@@ -1,0 +1,78 @@
+services:
+  edge-gateway:
+    replicas: 3
+    capacity_per_replica: 50000
+    base_latency_ms: 5.0
+    dependencies:
+      - identity-service
+      - streaming-service
+      - merchandise-service
+
+  identity-service:
+    replicas: 4
+    capacity_per_replica: 15000
+    base_latency_ms: 15.0
+    dependencies:
+      - identity-db
+    config:
+      session_cache_ttl_seconds: 300
+      memory_leak_rate_mb_per_req: 0.0
+
+  identity-db:
+    replicas: 1
+    capacity_per_replica: 100000
+    base_latency_ms: 5.0
+    dependencies: []
+
+  streaming-service:
+    replicas: 6
+    capacity_per_replica: 25000
+    base_latency_ms: 10.0
+    dependencies:
+      - cdn-service
+
+  cdn-service:
+    replicas: 1
+    capacity_per_replica: 500000
+    base_latency_ms: 2.0
+    dependencies: []
+
+  merchandise-service:
+    replicas: 3
+    capacity_per_replica: 10000
+    base_latency_ms: 40.0
+    dependencies:
+      - inventory-service
+      - payment-service
+
+  inventory-service:
+    replicas: 2
+    capacity_per_replica: 20000
+    base_latency_ms: 10.0
+    dependencies:
+      - postgres-db
+
+  postgres-db:
+    replicas: 1
+    capacity_per_replica: 50000
+    base_latency_ms: 8.0
+    dependencies: []
+
+  payment-service:
+    replicas: 2
+    capacity_per_replica: 3000
+    base_latency_ms: 20.0
+    dependencies:
+      - payment-provider
+    config:
+      payment:
+        timeout_ms: 5000
+        max_retries: 3
+        backoff_ms: 250
+        circuit_breaker_enabled: true
+
+  payment-provider:
+    replicas: 1
+    capacity_per_replica: 50000
+    base_latency_ms: 80.0
+    dependencies: []

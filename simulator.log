@@ -1,0 +1,10 @@
+INFO:     Started server process [18665]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:51177 - "WebSocket /dashboard/stream" [accepted]
+INFO:     connection open
+New websocket connection. Active: 1
+Websocket disconnected.
+INFO:     127.0.0.1:52793 - "GET /telemetry HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52794 - "GET /telemetry HTTP/1.1" 404 Not Found
