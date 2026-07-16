@@ -1,104 +1,96 @@
-# Context-Aware Autonomous Observability Digital Twin Simulator & Agent
+# Cisco Hackathon: Context-Aware Autonomous Observability Digital Twin
 
-An end-to-end prototype implementing a continuously operating observability agent that distinguishes legitimate event traffic, external attacks, and internal faults, localizes root causes, proposes remediation actions subject to human approval, and verifies recovery.
+This project is a high-performance, event-driven Digital Twin simulation built for a Cisco AIOps observability hackathon. It demonstrates real-time metric collection, mathematical ratio invariant analysis, Root-Cause Analysis (RCA) classification with confidence scoring, and closed-loop human-in-the-loop (HITL) remediations.
 
 ---
 
-## 1. Directory Structure
+## 1. System Architecture
+
+The project has been refactored from a mock static simulation into a decoupled distributed microservices layout running on three distinct local ports:
 
 ```text
-context-aware-observability/
-├── README.md
-├── requirements.txt
-├── config/
-│   ├── services.yaml       # Microservices dependency topology configuration
-│   └── policy.yaml         # Remediation action risk/approval policy mapping
-├── shared/
-│   └── schemas.py          # Strict Pydantic models for logs, metrics, traces, and flows
-├── simulator/
-│   ├── clock.py            # Thread-safe, deterministic accelerated simulation clock
-│   ├── dynamics/
-│   │   └── services.py     # Propagation, queuing delays, retry loops, and CPU/Mem modeling
-│   ├── private/
-│   │   └── ground_truth.py # Private scenario scheduler (hidden from agent)
-│   └── app.py              # FastAPI server serving simulator telemetry and WebSocket stream
-├── agent/
-│   ├── app.py              # FastAPI agent running background inference loop
-│   ├── baseline/
-│   │   └── residuals.py    # Decomposes surges into explained and residual components
-│   ├── features/
-│   │   └── ratios.py       # Computes diagnostic indicators (retries, invalid logins, etc.)
-│   ├── detection/
-│   │   └── fusion.py       # Fuses ML/rules to classify attacks and faults
-│   ├── rca/
-│   │   └── scorer.py       # Dynamic candidate scoring and config/code localization
-│   └── policy/
-│   │   └── selector.py     # Maps verdicts to response ladders
-├── evaluator/
-│   └── app.py              # Evaluates committed agent decisions against hidden truths
-├── dashboard/
-│   └── static/             # Real-time dashboard served directly by the simulator (port 8000)
-│       ├── index.html
-│       ├── style.css       # Sleek dark-mode glassmorphic aesthetics
-│       └── app.js          # SVG graph rendering, double-axis Chart.js, and API controls
-├── scripts/
-│   └── start_demo.sh       # Executable script to start all services and log output
-└── tests/
-    ├── test_leakage.py     # Verifies data-leakage boundaries (forbidden terms test)
-    └── test_scenarios.py   # Verifies simulation dynamics and remediation feedback loops
+  [ Traffic Generators ] ──(Real HTTP Requests)──► [ Target Platform (Port 8001) ]
+                                                          ▲
+                                                          │ (Polled metrics every 1s)
+                                                          ▼
+  [ Streamlit UI Portal (Port 8501) ] ◄──(JSON API)─── [ Observability Agent (Port 8000) ]
 ```
 
----
+### Components
 
-## 2. Scenarios Modeled
-
-### Scenario A: Code/Configuration Retry Storm
-* **Injected Cause:** An operator deploys a commit `a7f31c2` at logical minute 2, changing `payment-service` configuration to a short `100ms` timeout, unlimited retries (`max_retries: -1`), and zero backoff.
-* **Symptom Cascade:** A moderate merchandise load increases downstream payment latency beyond 100ms. Unlimited immediate retries amplify payment traffic 8x, exhausting connection pools. upstream checkouts timeout and fail, propagating to edge-gateway.
-* **Agent Remediation:** The agent localizes the fault to `services/payment-service/config.yaml`, keys `payment.timeout_ms`/`max_retries`, and commit `a7f31c2`. It proposes a config patch increasing timeout to `1500ms` and capping retries at `3` with backoff.
-
-### Scenario B: Legitimate Merchandise Surge
-* **Context:** A scheduled merchandise drop event occurs.
-* **Symptom Cascade:** A 12x surge in checkout requests. Ratios (success rates, invalid credential rates) remain inside expected event boundaries. Retries remain low because Scenario A was patched.
-* **Agent Action:** Agent detects traffic is within the event-explained limits, suppresses alerts, and proposes simple scaling.
-
-### Scenario C: Credential Stuffing & DDoS Attack Overlay
-* **Context:** While the merchandise drop is active, an external botnet launches a credential stuffing attack on `/login`.
-* **Symptom Cascade:** Login attempts surge to 90,000/min. Invalid credentials exceed 70%. Network flow logs identify a malicious cohort `cohort-91` with static TTL signatures.
-* **Agent Remediation:** Agent separates the event-explained login baseline from the unexplained residual. It isolates `cohort-91` and proposes a rate limit at the edge gateway while preserving legitimate user sessions.
+1.  **Target Platform (`target_platform.py` - Port 8001)**:
+    *   An async FastAPI dummy production microservice.
+    *   Tracks transaction throughput, login requests, auth successes, and internal RPCs in memory.
+    *   Generates continuous, realistic ambient background traffic (**450 to 750 requests/sec**) to keep the twin alive.
+    *   Accepts mutations to its firewall and timeout configurations via `/admin/*` endpoints.
+2.  **Observability Agent (`observability_agent.py` - Port 8000)**:
+    *   An async FastAPI AIOps control plane.
+    *   Polls the target service every 1.0s to ingest telemetry and compute ratio invariants ($r_1 - r_5$).
+    *   Classifies incidents, computes dynamic confidence scores, and hosts remediation action logs.
+3.  **Observability Portal (`dashboard_ui.py` - Port 8501)**:
+    *   A premium, glassmorphic Streamlit SaaS control plane.
+    *   Fetches agent state every 1.0s and renders real-time dials, traffic charts, RCA alerts, and mitigation approval triggers.
 
 ---
 
-## 3. Getting Started
+## 2. Invariant Math & RCA Diagnostics
 
-### 1. Requirements Installation
-Ensure Python 3.12+ and virtual environment tools are installed. Run:
+The agent evaluates five dimensionless ratios to identify anomalies:
+
+*   **$r_1$: CPU Load** (Threshold: $\le 85\%$) - Spikes to $88\%$ during botnet floods and $97\%$ under internal loop storms.
+*   **$r_2$: Auth Success** (Threshold: $\ge 40\%$) - Collapses below $15\%$ during brute-force login stuffing.
+*   **$r_3$: IP Shannon Entropy** (Threshold: $\ge 2.00$) - Measures client diversity; drops to $1.1$ during concentrated botnet attacks.
+*   **$r_4$: RPC Amplification** (Threshold: $\le 3.0\text{x}$) - Tracks retry loops; matches `retry_config` directly.
+*   **$r_5$: Client Error Rate** (Threshold: $\le 10\%$) - Measures 5xx responses; surges during timeout cascade storms.
+
+### Decision Matrix & Precedence
+
+*   **Retry Storm**: If $r_4 > 3.0$, the verdict is `ALERT_RETRY_STORM` (**Confidence: 97%-99.9%**). It forces **2,500ms** latency and takes strict priority over external botnet metrics.
+*   **Credential Stuffing**: If `botnet_active == True` or ($r_2 < 40\%$ and $r_3 < 2.0$), the verdict is `ALERT_CREDENTIAL_STUFFING` (**Confidence: 90%-99.9%**), forcing **220ms** latency.
+*   **Merch Surge**: If requests exceed $5000$/sec while invariants are nominal, the verdict is `SUPPRESS_EXPECTED_EVENT` (Identified as legitimate peak promotional load).
+*   **Standby**: Healthy nominal baseline (**45ms** latency, **45%** CPU).
+
+---
+
+## 3. Traffic Generators (Simulation Scripts)
+
+Run these scripts from the workspace root to inject faults live during the presentation:
+
+*   **`python 1_merch_surge.py`**: Fires 15,000 stream and 1,000 login requests over 5s (legitimate surge). Expected baseline climbs to match the spike.
+*   **`python 2_botnet_attack.py`**: Triggers a credential stuffing attack, firing 80,000 logins over 5s with header tags. Expected baseline remains at 1,500, highlighting unexplained residual.
+*   **`python 3_retry_storm.py`**: Commits an unstable configuration setting `max_retries = 15` on port 8001, triggering thread locks and pinning latency to 2,500ms.
+
+---
+
+## 4. Closed-Loop Remediation
+
+ remediations are exposed as **Approve** buttons in the dashboard's RCA card and execute feedback loops back to port 8001:
+
+1.  **Edge Rate-Limiting**: Blocks `X-Botnet` proxy headers at the edge gateway.
+2.  **Config Rollback**: POSTs a config fix reverting target retries to 1.
+3.  **Reset Simulation State**: A red button on the dashboard sidebar that clears all history logs, MTTR clocks, and target variables back to the beginning.
+
+---
+
+## 5. Getting Started
+
+### Installation
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Start the Demo
-Run the startup script:
+### Start Services (Three separate terminal windows)
 ```bash
-./scripts/start_demo.sh
-```
-This script terminates any processes using ports 8000, 8001, and 8002, starts the Simulator, Agent, and Evaluator, and tails their logs.
+# Terminal 1: Target Platform
+.venv/bin/python target_platform.py
 
-### 3. Open the Dashboard
-Navigate to:
-* **Dashboard Portal:** [http://localhost:8000](http://localhost:8000)
+# Terminal 2: Observability Agent
+.venv/bin/python observability_agent.py
 
-### 4. Running the Tests
-To run the automated leakage isolation and scenario logic checks:
-```bash
-.venv/bin/python3 -m unittest discover -s tests
+# Terminal 3: Streamlit UI
+.venv/bin/streamlit run dashboard_ui.py --server.port 8501
 ```
 
----
-
-## 4. Causal Loop Feedback & State Containment
-
-1. **State Containment:** Ground truth scenario logs exist only in `simulator/private/ground_truth.py` and are served on `/admin/*` endpoints. The agent has access only to neutral public observations. Leakage checks are run continuously by the evaluator on port 8002.
-2. **Causal Feedback:** Actions proposed by the agent are sent to the policy engine. Once approved on the dashboard, they mutate the actual system parameters in the simulator. The simulator recalculates offered load, queue depths, latencies, and errors for subsequent ticks.
+Open [http://localhost:8501](http://localhost:8501) in your browser.
